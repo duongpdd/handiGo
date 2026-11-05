@@ -1,0 +1,29 @@
+/* Đánh giá sản phẩm: dòng tóm tắt trên trang chi tiết và khu vực danh sách đánh giá. */
+.stars { position: relative; display: inline-block; color: #e3d6c6; font-size: 1rem; line-height: 1; letter-spacing: 1px; white-space: nowrap; vertical-align: -1px; }
+.stars-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: #e0a100; }
+
+.detail-rating { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin: -4px 0 14px; color: var(--muted); font-size: .9rem; }
+.detail-rating > * { padding-inline: 12px; border-left: 1px solid var(--line); }
+.detail-rating > :first-child { padding-left: 0; border-left: 0; }
+.detail-rating a { display: inline-flex; align-items: center; gap: 6px; color: var(--text); text-underline-offset: 4px; }
+.detail-rating a:hover { text-decoration: underline; }
+.detail-rating strong { color: #b07800; font-size: 1rem; }
+
+.product-reviews { margin-top: 44px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.product-reviews h2 { margin-bottom: 14px; font-size: 1.63rem; }
+.review-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; padding: 16px 18px; border-radius: 8px; background: var(--tint); }
+.review-summary p { margin: 0; color: #b07800; }
+.review-summary p strong { font-size: 1.9rem; }
+.review-summary .stars { font-size: 1.3rem; }
+.review-list { margin: 0 0 6px; padding: 0; list-style: none; }
+.review-item { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.review-item:last-child { border-bottom: 0; }
+.review-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #f1e4d8; color: var(--wine); font-weight: 700; text-transform: uppercase; }
+.review-author { margin: 0 0 3px; font-size: .88rem; font-weight: 700; }
+.review-variant { margin: 5px 0 0; color: var(--muted); font-size: .8rem; }
+.review-comment { margin: 7px 0 0; overflow-wrap: anywhere; white-space: pre-line; }
+
+@media (max-width: 710px) {
+  .product-reviews { margin-top: 28px; padding: 15px; }
+  .detail-rating > * { padding-inline: 9px; }
+}
