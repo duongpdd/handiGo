@@ -85,7 +85,12 @@ function Footer() {
     <div><Link className="brand" href="/" aria-label="HandiGo · Trang chủ"><img src={logo} alt="HandiGo" /></Link><p>Tiện ích hằng ngày</p></div>
     <div><h2>Khám phá</h2><Link href="/dong-san-pham">Dòng sản phẩm</Link><Link href="/shopping">Shopping</Link><Link href="/gioi-thieu">Về HandiGo</Link></div>
     <div><h2>Hỗ trợ</h2><Link href="/tra-cuu-don">Tra cứu đơn hàng</Link><Link href="/chinh-sach/giao-hang">Giao hàng</Link><Link href="/chinh-sach/doi-tra">Đổi trả</Link><Link href="/chinh-sach/bao-hanh">Bảo hành</Link></div>
-    <div id="lien-he"><h2>Liên hệ</h2><a href="tel:0862011397">0862 011 397</a><a href="mailto:handigo.shop@gmail.com">handigo.shop@gmail.com</a></div>
+    <div id="lien-he">
+      <h2>Liên hệ</h2>
+      <a href="tel:0862011397">0862 011 397</a>
+      <a href="mailto:handigo.shop@gmail.com">handigo.shop@gmail.com</a>
+      <a href="https://www.facebook.com/profile.php?id=61595162400373">Facebook HandiGo</a>
+    </div>
   </div><div className="wrap footer-bottom">© HandiGo · Website demo</div></footer>;
 }
 
