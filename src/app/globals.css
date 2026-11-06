@@ -252,6 +252,10 @@ textarea { resize: vertical; min-height: 76px; }
 .footer h2 { font: 700 1rem/1.2 Arial, sans-serif; }
 .footer a:not(.brand) { display: block; font-size: .88rem; margin: 4px 0; overflow-wrap: anywhere; }
 .footer a:hover { text-decoration: underline; }
+.footer a.footer-contact { display: flex; align-items: center; gap: 8px; }
+.footer a.footer-contact svg { flex: none; }
+.footer a.footer-social { display: inline-grid; place-items: center; width: 36px; height: 36px; margin-top: 8px; border: 1px solid #fff9; border-radius: 50%; }
+.footer a.footer-social:hover { background: #fff2; }
 .footer-bottom { border-top: 1px solid #fff5; padding-block: 14px; font-size: .8rem; }
 .toast { position: fixed; right: 20px; bottom: 24px; z-index: 6; background: #2c231c; color: white; border-radius: 4px; box-shadow: 0 4px 18px #0003; }
 .toast.visible { padding: 13px 19px; }

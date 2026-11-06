@@ -87,11 +87,11 @@ function Footer() {
     <div><h2>Hỗ trợ</h2><Link href="/tra-cuu-don">Tra cứu đơn hàng</Link><Link href="/chinh-sach/giao-hang">Giao hàng</Link><Link href="/chinh-sach/doi-tra">Đổi trả</Link><Link href="/chinh-sach/bao-hanh">Bảo hành</Link></div>
     <div id="lien-he">
       <h2>Liên hệ</h2>
-      <a href="tel:0862011397">0862 011 397</a>
-      <a href="mailto:handigo.shop@gmail.com">handigo.shop@gmail.com</a>
-      <a href="https://www.facebook.com/profile.php?id=61595162400373">Facebook HandiGo</a>
+      <a className="footer-contact" href="tel:0862011397"><Icon name="phone" size={17} />0862 011 397</a>
+      <a className="footer-contact" href="mailto:handigo.shop@gmail.com"><Icon name="mail" size={17} />handigo.shop@gmail.com</a>
+      <a className="footer-social" href="https://www.facebook.com/profile.php?id=61595162400373" target="_blank" rel="noreferrer" aria-label="Facebook HandiGo"><Icon name="facebook" size={19} /></a>
     </div>
-  </div><div className="wrap footer-bottom">© HandiGo · Website demo</div></footer>;
+  </div><div className="wrap footer-bottom">© HandiGo</div></footer>;
 }
 
 function ProductGrid({ products, add, soldBySlug, ratings }: {

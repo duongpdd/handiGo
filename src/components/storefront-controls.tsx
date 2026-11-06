@@ -26,6 +26,9 @@ const paths = {
   logout: <><path d="M11 4H5v16h6m1-8h8m-3-3 3 3-3 3" /></>,
   shield: <><path d="M12 3 20 6v5c0 4.5-3.3 7.8-8 10-4.7-2.2-8-5.5-8-10V6z" /><path d="m8 12 2.5 2.5L16 9" /></>,
   headset: <><path d="M4 13v-2a8 8 0 0 1 16 0v2m0 4c0 2-2 3-5 3h-2" /><rect x="3" y="11" width="4" height="6" rx="1.5" /><rect x="17" y="11" width="4" height="6" rx="1.5" /></>,
+  phone: <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+  mail: <><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></>,
+  facebook: <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />,
 } satisfies Record<string, ReactNode>;
 
 export function Icon({ name, size = 21 }: { name: keyof typeof paths; size?: number }) {
