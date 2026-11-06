@@ -77,7 +77,4 @@ export type Order = {
   items: { variantId: string; productName: string; variantName: string; unitPrice: number; quantity: number }[];
 };
 
-export const money = (value: number) => new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-}).format(value);
+export const money = (value: number) => new Intl.NumberFormat("vi-VN").format(value) + "đ";

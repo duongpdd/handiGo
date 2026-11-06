@@ -41,11 +41,34 @@ function Header({ screen, count, account, products, openCart }: {
   const query = useSearchParams();
   const term = screen === "shopping" ? query.get("q") ?? "" : "";
   const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const searchToggle = useRef<HTMLButtonElement>(null);
+  const menuToggle = useRef<HTMLButtonElement>(null);
+  const headerBar = useRef<HTMLDivElement>(null);
   const accountUrl = account ? "/tai-khoan" : "/dang-nhap";
   function closeSearch() {
     setSearchOpen(false);
   }
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!headerBar.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [menuOpen]);
+  const closeMenu = () => setMenuOpen(false);
+  const mobileMenu = menuOpen && <nav id="mobile-menu" className="mobile-menu" aria-label="Menu" onKeyDown={(event) => {
+    if (event.key !== "Escape") return;
+    closeMenu();
+    menuToggle.current?.focus();
+  }}>
+    {nav.map(([label, href]) => <div key={href}>
+      <Link href={href} onClick={closeMenu} aria-current={href === "/" + screen ? "page" : undefined}>{label}</Link>
+      {href === "/shopping" && categories.map((category) => <Link key={category.slug} className="mobile-menu-sub"
+        href={"/shopping?nhom=" + category.slug} onClick={closeMenu}>{category.name}</Link>)}
+    </div>)}
+  </nav>;
   const navigation = () => nav.map(([label, href]) =>
     href === "/shopping"
       ? <ProductMenu key={href} label={label} products={products} active={screen === "shopping"} onNavigate={closeSearch} />
@@ -54,7 +77,7 @@ function Header({ screen, count, account, products, openCart }: {
       </Link>);
   const searchButton = <button type="button" ref={searchToggle} className="icon-button"
     aria-label={searchOpen ? "Đóng tìm kiếm" : "Mở tìm kiếm"} aria-expanded={searchOpen}
-    onClick={() => setSearchOpen(!searchOpen)}>
+    onClick={() => { setSearchOpen(!searchOpen); closeMenu(); }}>
     <Icon name={searchOpen ? "close" : "search"} />
   </button>;
   const searchPanel = searchOpen && <div className="header-search-popover" onKeyDown={(event) => {
@@ -65,7 +88,7 @@ function Header({ screen, count, account, products, openCart }: {
     <SearchBox key={term} initialTerm={term} products={products} screen={screen} onNavigate={closeSearch} />
   </div>;
   return <header className="header">
-    <div className="wrap header-inner">
+    <div className="wrap header-inner" ref={headerBar}>
       <Link className="brand" href="/" aria-label="HandiGo · Trang chủ"><img src={logo} alt="HandiGo" /></Link>
       <nav className="main-nav" aria-label="Điều hướng chính">{navigation()}</nav>
       <div className="tools">
@@ -74,8 +97,13 @@ function Header({ screen, count, account, products, openCart }: {
           <Icon name="cart" />{count > 0 && <span key={count} className="cart-count">{count}</span>}
         </button>
         <Link className="icon-button" href={accountUrl} aria-label={account ? "Tài khoản" : "Đăng nhập"}><Icon name="user" /></Link>
+        <button type="button" ref={menuToggle} className="icon-button menu-toggle" aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+          aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => { setMenuOpen(!menuOpen); closeSearch(); }}>
+          <Icon name={menuOpen ? "close" : "menu"} />
+        </button>
       </div>
       {searchPanel}
+      {mobileMenu}
     </div>
   </header>;
 }
@@ -83,7 +111,7 @@ function Header({ screen, count, account, products, openCart }: {
 function Footer() {
   return <footer className="footer"><div className="wrap footer-grid">
     <div><Link className="brand" href="/" aria-label="HandiGo · Trang chủ"><img src={logo} alt="HandiGo" /></Link><p>Tiện ích hằng ngày</p></div>
-    <div><h2>Khám phá</h2><Link href="/dong-san-pham">Dòng sản phẩm</Link><Link href="/shopping">Shopping</Link><Link href="/gioi-thieu">Về HandiGo</Link></div>
+    <div><h2>Khám phá</h2><Link href="/dong-san-pham">Dòng sản phẩm</Link><Link href="/shopping">Mua sắm</Link><Link href="/gioi-thieu">Về HandiGo</Link></div>
     <div><h2>Hỗ trợ</h2><Link href="/tra-cuu-don">Tra cứu đơn hàng</Link><Link href="/chinh-sach/giao-hang">Giao hàng</Link><Link href="/chinh-sach/doi-tra">Đổi trả</Link><Link href="/chinh-sach/bao-hanh">Bảo hành</Link></div>
     <div id="lien-he">
       <h2>Liên hệ</h2>
@@ -185,10 +213,48 @@ function Shopping({ products, add, soldBySlug, ratings }: {
   </>;
 }
 
-const policies: Record<string, { title: string; text: string }> = {
-  "giao-hang": { title: "Giao hàng", text: "Phí giao hàng của bản demo được hiển thị ở bước thanh toán. Đơn thử nghiệm được lưu để nhóm thao tác trạng thái giao hàng." },
-  "doi-tra": { title: "Đổi trả", text: "Liên hệ HandiGo kèm mã đơn và tình trạng sản phẩm để được hướng dẫn về điều kiện đổi hàng." },
-  "bao-hanh": { title: "Bảo hành", text: "Vui lòng xem thời hạn bảo hành trong thông tin từng sản phẩm và liên hệ HandiGo để được hỗ trợ." },
+const policies: Record<string, { title: string; sections: { heading: string; items: string[] }[] }> = {
+  "giao-hang": { title: "Giao hàng", sections: [
+    { heading: "Phí giao hàng", items: [
+      "Phí tính theo tỉnh, thành nhận hàng và số lượng sản phẩm, hiển thị trước khi bạn đặt hàng.",
+      "Mọi đơn hàng đều tính phí giao hàng. Voucher chỉ giảm tiền hàng, không giảm phí giao.",
+    ] },
+    { heading: "Thời gian giao", items: [
+      "Dự kiến giao trong 2–4 ngày kể từ khi đặt hàng. Ngày dự kiến hiển thị ở bước thanh toán.",
+      "Bạn theo dõi đơn trong mục Đơn mua hoặc Tra cứu đơn hàng bằng mã đơn và số điện thoại.",
+    ] },
+    { heading: "Thanh toán và hủy đơn", items: [
+      "Bạn thanh toán bằng tiền mặt khi nhận hàng (COD).",
+      "Bạn tự hủy được đơn khi đơn còn ở trạng thái Chờ xác nhận. Sau đó, vui lòng liên hệ HandiGo.",
+    ] },
+  ] },
+  "doi-tra": { title: "Đổi trả", sections: [
+    { heading: "Trường hợp được đổi", items: [
+      "Sản phẩm bị lỗi do nhà sản xuất, hư hỏng khi vận chuyển, hoặc giao sai mẫu, sai màu.",
+      "Yêu cầu đổi được gửi trong vòng 7 ngày kể từ khi nhận hàng.",
+    ] },
+    { heading: "Điều kiện sản phẩm", items: [
+      "Còn đủ hộp, phụ kiện và quà tặng kèm (nếu có).",
+      "Sản phẩm chăm sóc răng miệng đã qua sử dụng chỉ được đổi khi có lỗi từ nhà sản xuất, vì lý do vệ sinh.",
+    ] },
+    { heading: "Cách yêu cầu đổi", items: [
+      "Gửi mã đơn, hình ảnh hoặc video tình trạng sản phẩm qua hotline hoặc email của HandiGo.",
+      "HandiGo chịu phí vận chuyển khi lỗi thuộc về sản phẩm hoặc do giao sai.",
+    ] },
+  ] },
+  "bao-hanh": { title: "Bảo hành", sections: [
+    { heading: "Thời hạn", items: [
+      "Tăm nước, bàn chải điện và quạt sạc được bảo hành 12 tháng kể từ ngày nhận hàng.",
+      "Với bình giữ nhiệt, vui lòng liên hệ HandiGo để được xác nhận thời hạn theo từng mã sản phẩm.",
+    ] },
+    { heading: "Phạm vi", items: [
+      "Áp dụng cho lỗi kỹ thuật do nhà sản xuất khi sản phẩm được sử dụng đúng hướng dẫn.",
+      "Không áp dụng cho hư hỏng do rơi vỡ, tự ý tháo sửa, hoặc hao mòn đầu chải, đầu tăm trong quá trình dùng.",
+    ] },
+    { heading: "Cách yêu cầu bảo hành", items: [
+      "Liên hệ HandiGo kèm mã đơn và mô tả lỗi để được hướng dẫn gửi sản phẩm.",
+    ] },
+  ] },
 };
 
 function Info({ screen, slug }: { screen: string; slug?: string }) {
@@ -212,7 +278,13 @@ function Info({ screen, slug }: { screen: string; slug?: string }) {
       <Link className="button" href="/tra-cuu-don">Tra cứu đơn hàng</Link></section>
   </>;
   const policy = policies[slug ?? ""];
-  return <><PageTitle tag="Hỗ trợ" title={policy.title} /><div className="panel narrow"><p>{policy.text}</p><Link className="text-link" href="/lien-he">Liên hệ HandiGo ↗</Link></div></>;
+  return <><PageTitle tag="Hỗ trợ" title={policy.title} /><div className="panel narrow policy">
+    {policy.sections.map((section) => <section key={section.heading}>
+      <h2>{section.heading}</h2>
+      <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>
+    </section>)}
+    <Link className="text-link" href="/lien-he">Liên hệ HandiGo ↗</Link>
+  </div></>;
 }
 
 const validLine = (line: unknown): line is CartLine => !!line && typeof line === "object" &&

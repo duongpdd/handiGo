@@ -194,14 +194,12 @@ export function ProductCard({ product, add, showcase }: {
         {showcase?.benefit && <p className="card-benefit">{showcase.benefit}</p>}
       </div>
       <div className="price"><strong>{money(product.price)}</strong>{product.listPrice > product.price && <del>{money(product.listPrice)}</del>}</div>
-      {showcase && <div className="card-social">
-        {rating?.count
-          ? <span aria-label={`${formatRating(rating.average)} trên 5 sao, ${rating.count} đánh giá`}>
-            <span className="card-star" aria-hidden="true">★</span> {formatRating(rating.average)} <span aria-hidden="true">({rating.count})</span>
-          </span>
-          : <span><span className="card-star" aria-hidden="true">☆</span> Chưa có đánh giá</span>}
-        <span>Đã bán {showcase.sold.toLocaleString("vi-VN")}</span>
-      </div>}
+      {showcase && (rating?.count || showcase.sold > 0) ? <div className="card-social">
+        {rating?.count ? <span aria-label={`${formatRating(rating.average)} trên 5 sao, ${rating.count} đánh giá`}>
+          <span className="card-star" aria-hidden="true">★</span> {formatRating(rating.average)} <span aria-hidden="true">({rating.count})</span>
+        </span> : null}
+        {showcase.sold > 0 && <span>Đã bán {showcase.sold.toLocaleString("vi-VN")}</span>}
+      </div> : null}
       <div className="card-colors"><ColorPicker variants={product.variants} selected={variant} onSelect={(item) => setSelected(item.id)} /><small>{variant.name}</small></div>
       <AddButton key={variant.id} variant={variant} quantity={1} add={add} />
     </div>
@@ -265,11 +263,13 @@ export function ProductDetail({ product, add, buyNow, rating, sold, reviews }: {
       <div className="product-info">
         <p className="eyebrow">MAGIC · {product.sku}</p>
         <h1>{product.name}</h1>
-        <div className="detail-rating">
-          {rating?.count ? <a href="#danh-gia"><strong>{formatRating(rating.average)}</strong> <Stars value={rating.average} /></a> : null}
-          <a href="#danh-gia">{rating?.count ? rating.count.toLocaleString("vi-VN") + " đánh giá" : "Chưa có đánh giá"}</a>
-          <span>Đã bán {sold.toLocaleString("vi-VN")}</span>
-        </div>
+        {rating?.count || sold > 0 ? <div className="detail-rating">
+          {rating?.count ? <>
+            <a href="#danh-gia"><strong>{formatRating(rating.average)}</strong> <Stars value={rating.average} /></a>
+            <a href="#danh-gia">{rating.count.toLocaleString("vi-VN")} đánh giá</a>
+          </> : null}
+          {sold > 0 && <span>Đã bán {sold.toLocaleString("vi-VN")}</span>}
+        </div> : null}
         <div className="price detail-price"><strong>{money(product.price)}</strong>
           {product.listPrice > product.price && <del>{money(product.listPrice)}</del>}
           {sale > 0 && <span className="sale-tag">Tiết kiệm {sale}%</span>}

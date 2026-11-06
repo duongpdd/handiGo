@@ -18,7 +18,7 @@ Mở http://localhost:3000. SQLite tự khởi tạo khi mở trang lần đầu
 
 ## Luồng demo
 
-- Dùng Shopping để tìm theo tên hoặc mã, lọc danh mục và sắp xếp giá.
+- Dùng Mua sắm để tìm theo tên hoặc mã, lọc danh mục và sắp xếp giá.
 - Chọn màu, thêm giỏ, nhập thông tin giao hàng thử nghiệm và đặt COD. Lưu mã đơn để tra cứu cùng số điện thoại đặt hàng.
 - Quản trị có thể đổi giá, trạng thái bán, ảnh và tồn kho theo màu, rồi xác nhận, chuyển giao hoặc hủy đơn. Hủy đơn trước khi giao hoàn lại tồn kho.
 - Đăng ký và đăng nhập để xem đơn đã đặt bằng tài khoản đó.

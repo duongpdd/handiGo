@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import catalog from "../../../data/catalog.json";
 import Shop from "@/components/shop";
 import { currentAccount } from "@/server/auth";
 import { listCart } from "@/server/cart";
@@ -15,6 +17,28 @@ const screens: Record<string, number> = {
   "thanh-toan": 1, "tra-cuu-don": 1, "dang-nhap": 1, "dang-ky": 1,
   "tai-khoan": 1, "gioi-thieu": 1, "lien-he": 1, "chinh-sach": 2, "quan-tri": 2,
 };
+
+const pageTitles: Record<string, string> = {
+  "dong-san-pham": "Dòng sản phẩm", shopping: "Mua sắm", "gio-hang": "Giỏ hàng", "thanh-toan": "Thanh toán",
+  "tra-cuu-don": "Tra cứu đơn hàng", "dang-nhap": "Đăng nhập", "dang-ky": "Đăng ký", "tai-khoan": "Tài khoản",
+  "gioi-thieu": "Giới thiệu", "lien-he": "Liên hệ", "quan-tri": "Quản trị",
+};
+const policyTitles: Record<string, string> = {
+  "giao-hang": "Chính sách giao hàng", "doi-tra": "Chính sách đổi trả", "bao-hanh": "Chính sách bảo hành",
+};
+
+export async function generateMetadata({ params }: { params: Promise<{ screen?: string[] }> }): Promise<Metadata> {
+  const [screen, slug] = (await params).screen ?? [""];
+  if (screen === "san-pham") {
+    const product = catalog.find((item) => item.slug === slug);
+    if (!product) return {};
+    const label = product.name.includes(product.sku) ? product.name : product.name + " " + product.sku;
+    const highlights = product.specs.filter((spec) => !spec.includes(product.sku)).slice(0, 2);
+    return { title: label, description: `${label}: ${highlights.join("; ")}.` };
+  }
+  if (screen === "chinh-sach") return slug && Object.hasOwn(policyTitles, slug) ? { title: policyTitles[slug] } : {};
+  return screen && Object.hasOwn(pageTitles, screen) ? { title: pageTitles[screen] } : {};
+}
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ screen?: string[] }>;

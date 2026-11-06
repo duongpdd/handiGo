@@ -29,7 +29,7 @@ export function CartPage({ lines, note, setNote, adjust, missing }: {
 }) {
   const subtotal = lines.reduce((total, line) => total + line.product.price * line.quantity, 0);
   return <>
-    <PageTitle tag="Shopping" title="Giỏ hàng của bạn" />
+    <PageTitle tag="Mua sắm" title="Giỏ hàng của bạn" />
     {missing > 0 && <p className="alert">Một số sản phẩm đã ngừng bán và được bỏ khỏi giỏ.</p>}
     {!lines.length ? <EmptyCart /> : <div className="split">
       <section className="panel">
@@ -258,7 +258,7 @@ export function ProductAdmin({ product }: { product: Product }) {
 
   return <form className="panel form-stack" onSubmit={save}>
     <h2>{product.name} <small className="muted">{product.sku}</small></h2>
-    <label className="field">Giá bán (₫)<input type="number" name="price" min={1} defaultValue={product.price} required /></label>
+    <label className="field">Giá bán (đ)<input type="number" name="price" min={1} defaultValue={product.price} required /></label>
     {product.variants.map((variant) => <div key={variant.id} className="stock-fields">
       <label className="field">Tồn · {variant.name}<input type="number" name={variant.id} min={0} max={100000} defaultValue={variant.stock} required /></label>
       <label className="field">Ảnh · {variant.name}<select name={variant.id + "-image"} defaultValue={variant.image}>
