@@ -29,27 +29,27 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
       await signOut();
     } else if (action === "cart") {
       if (!account) fail("Vui lòng đăng nhập để dùng giỏ hàng.", 401);
-      return NextResponse.json({ cart: updateCart(account, body) });
+      return NextResponse.json({ cart: await updateCart(account, body) });
     } else if (action === "order") {
       if (!account) fail("Vui lòng đăng nhập để đặt hàng.", 401);
-      return NextResponse.json({ order: placeOrder(body, account) });
+      return NextResponse.json({ order: await placeOrder(body, account) });
     } else if (action === "checkout-voucher") {
       if (!account) fail("Vui lòng đăng nhập để áp dụng mã giảm giá.", 401);
       return NextResponse.json(getCheckoutVoucher(normalizeVoucher(body.code)));
     } else if (action === "checkout-address") {
       if (!account) fail("Vui lòng đăng nhập để lưu địa chỉ.", 401);
-      return NextResponse.json({ addresses: updateCheckoutAddresses(account, body) });
+      return NextResponse.json({ addresses: await updateCheckoutAddresses(account, body) });
     } else if (action === "lookup") {
-      return NextResponse.json({ order: lookupOrder(body) });
+      return NextResponse.json({ order: await lookupOrder(body) });
     } else if (action === "cancel-order" || action === "review-order") {
       if (!account) fail("Vui lòng đăng nhập để quản lý đơn hàng.", 401);
       return action === "cancel-order"
-        ? NextResponse.json({ order: changeOrderStatus(body, account) })
-        : NextResponse.json({ review: reviewOrder(body, account) });
+        ? NextResponse.json({ order: await changeOrderStatus(body, account) })
+        : NextResponse.json({ review: await reviewOrder(body, account) });
     } else if (action === "product" || action === "status") {
       if (account?.role !== "admin") fail("Bạn cần đăng nhập bằng tài khoản quản trị.", 403);
-      if (action === "product") updateProduct(body);
-      if (action === "status") return NextResponse.json({ order: changeOrderStatus(body) });
+      if (action === "product") await updateProduct(body);
+      if (action === "status") return NextResponse.json({ order: await changeOrderStatus(body) });
     } else {
       fail("Không tìm thấy chức năng.", 404);
     }

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { db, passwordHash } from "./db";
+import { db, passwordHash, persistentDb } from "./db";
 import type { Account } from "@/lib/shop";
 
 const sessionCookie = "handigo_session";
@@ -27,7 +27,7 @@ export async function currentAccount(): Promise<Account | null> {
   const jar = await cookies();
   const token = jar.get(sessionCookie)?.value;
   if (!token) return null;
-  const account = db.prepare(`
+  const account = await db.prepare(`
     SELECT u.id, u.name, u.email, u.role FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.token = ? AND s.expires > ?
   `).get(sessionKey(token), Date.now()) as Account | undefined;
@@ -35,17 +35,18 @@ export async function currentAccount(): Promise<Account | null> {
 }
 
 export async function authenticate(body: Record<string, unknown>, register: boolean, secure: boolean) {
+  if (!persistentDb) fail("Hệ thống chưa kết nối cơ sở dữ liệu lưu trữ nên chưa thể đăng ký hoặc đăng nhập.", 503);
   const email = field(body.email, "Email", 4, 150).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail("Email không hợp lệ.");
   const password = typeof body.password === "string" ? body.password : "";
   if (password.length < 8 || password.length > 128) fail("Mật khẩu cần từ 8 đến 128 ký tự.");
   const reservedAdmin = process.env.HANDIGO_ADMIN_EMAIL?.trim().toLowerCase();
-  const row = db.prepare("SELECT id, password FROM users WHERE email = ?").get(email);
+  const row = await db.prepare("SELECT id, password FROM users WHERE email = ?").get(email);
   let id: string;
   if (register) {
     if (row || email === reservedAdmin) fail("Email này không dùng được để đăng ký.", 409);
     id = randomBytes(16).toString("hex");
-    db.prepare("INSERT INTO users VALUES (?, ?, ?, ?, 'customer')")
+    await db.prepare("INSERT INTO users VALUES (?, ?, ?, ?, 'customer')")
       .run(id, email, field(body.name, "Họ tên", 2, 80), passwordHash(password));
   } else {
     const stored = typeof row?.password === "string" ? row.password : null;
@@ -57,10 +58,10 @@ export async function authenticate(body: Record<string, unknown>, register: bool
   }
   const jar = await cookies();
   const previous = jar.get(sessionCookie)?.value;
-  if (previous) db.prepare("DELETE FROM sessions WHERE token = ?").run(sessionKey(previous));
+  if (previous) await db.prepare("DELETE FROM sessions WHERE token = ?").run(sessionKey(previous));
   const token = randomBytes(32).toString("hex");
-  db.prepare("DELETE FROM sessions WHERE expires <= ?").run(Date.now());
-  db.prepare("INSERT INTO sessions VALUES (?, ?, ?)").run(sessionKey(token), id, Date.now() + sessionAge * 1000);
+  await db.prepare("DELETE FROM sessions WHERE expires <= ?").run(Date.now());
+  await db.prepare("INSERT INTO sessions VALUES (?, ?, ?)").run(sessionKey(token), id, Date.now() + sessionAge * 1000);
   jar.set(sessionCookie, token, {
     httpOnly: true, secure, sameSite: "lax", path: "/",
     ...(body.remember === "on" ? { maxAge: sessionAge } : {}),
@@ -70,6 +71,6 @@ export async function authenticate(body: Record<string, unknown>, register: bool
 export async function signOut() {
   const jar = await cookies();
   const token = jar.get(sessionCookie)?.value;
-  if (token) db.prepare("DELETE FROM sessions WHERE token = ?").run(sessionKey(token));
+  if (token) await db.prepare("DELETE FROM sessions WHERE token = ?").run(sessionKey(token));
   jar.delete(sessionCookie);
 }

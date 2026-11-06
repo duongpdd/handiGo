@@ -6,9 +6,10 @@ const maxQuantity = 99;
 const maxLines = 50;
 
 /** Giỏ hàng của tài khoản, theo thứ tự thêm vào. */
-export function listCart(account: Account): CartLine[] {
-  return db.prepare("SELECT variant_id, quantity FROM cart_items WHERE user_id = ? ORDER BY rowid")
-    .all(account.id).map((row) => ({ variantId: String(row.variant_id), quantity: Number(row.quantity) }));
+export async function listCart(account: Account): Promise<CartLine[]> {
+  const rows = await db.prepare("SELECT variant_id, quantity FROM cart_items WHERE user_id = ? ORDER BY rowid")
+    .all(account.id);
+  return rows.map((row) => ({ variantId: String(row.variant_id), quantity: Number(row.quantity) }));
 }
 
 function readLines(value: unknown): CartLine[] {
@@ -32,12 +33,12 @@ function readLines(value: unknown): CartLine[] {
  * - `set`: đặt đúng số lượng; 0 là xóa dòng.
  * - `merge`: gộp giỏ cũ từ trình duyệt, tự bỏ qua hàng ngừng bán và cắt theo tồn kho.
  */
-export function updateCart(account: Account, body: Record<string, unknown>): CartLine[] {
+export async function updateCart(account: Account, body: Record<string, unknown>): Promise<CartLine[]> {
   const operation = body.operation;
   if (operation === "list") return listCart(account);
   if (operation !== "add" && operation !== "set" && operation !== "merge") fail("Thao tác giỏ hàng không hợp lệ.");
   const lines = readLines(body.items);
-  return transaction(() => {
+  return transaction(async () => {
     const variant = db.prepare(`
       SELECT v.stock, p.detail FROM variants v JOIN products p ON p.slug = v.product_slug
       WHERE v.id = ? AND p.active = 1
@@ -50,16 +51,16 @@ export function updateCart(account: Account, body: Record<string, unknown>): Car
     const remove = db.prepare("DELETE FROM cart_items WHERE user_id = ? AND variant_id = ?");
     const now = Date.now();
     for (const { variantId, quantity } of lines) {
-      const existing = Number(current.get(account.id, variantId)?.quantity ?? 0);
+      const existing = Number((await current.get(account.id, variantId))?.quantity ?? 0);
       if (operation === "set" && quantity === 0) {
-        remove.run(account.id, variantId);
+        await remove.run(account.id, variantId);
         continue;
       }
-      const row = variant.get(variantId);
+      const row = await variant.get(variantId);
       if (operation === "merge") {
         if (!row) continue;
         const total = Math.min(existing + quantity, Number(row.stock), maxQuantity);
-        if (total > existing) save.run(account.id, variantId, total, now);
+        if (total > existing) await save.run(account.id, variantId, total, now);
         continue;
       }
       if (!row) fail("Có sản phẩm đã ngừng bán. Vui lòng kiểm tra giỏ.", 409);
@@ -68,11 +69,11 @@ export function updateCart(account: Account, body: Record<string, unknown>): Car
       if (operation === "add") {
         if (quantity < 1) fail("Số lượng không hợp lệ.");
         if (existing + quantity > limit) fail(name + " không đủ hàng cho màu đã chọn.", 409);
-        save.run(account.id, variantId, existing + quantity, now);
+        await save.run(account.id, variantId, existing + quantity, now);
       } else {
         // Cho phép giảm khi tồn kho vừa bị giảm; chỉ chặn khi tăng vượt tồn.
         if (quantity > existing && quantity > limit) fail("Số lượng vượt quá tồn kho.", 409);
-        save.run(account.id, variantId, quantity, now);
+        await save.run(account.id, variantId, quantity, now);
       }
     }
     return listCart(account);

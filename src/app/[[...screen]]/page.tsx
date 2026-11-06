@@ -32,29 +32,29 @@ export default async function Page({ params, searchParams }: {
   }
   if ((screen === "quan-tri" || screen === "tai-khoan") && !account) redirect("/dang-nhap");
   if (screen === "quan-tri" && account?.role !== "admin") redirect("/tai-khoan");
-  const products = listProducts(screen === "quan-tri" || screen === "tai-khoan");
+  const products = await listProducts(screen === "quan-tri" || screen === "tai-khoan");
   if (screen === "san-pham" && !products.some((product) => product.slug === slug)) notFound();
   const orders = account && (screen === "tai-khoan" || (screen === "quan-tri" && slug === "don-hang"))
-    ? listOrders(account, screen === "quan-tri")
+    ? await listOrders(account, screen === "quan-tri")
     : [];
   let checkout;
   if (screen === "thanh-toan" && account) {
     if (complete) {
       const { don } = await searchParams;
-      const order = typeof don === "string" && /^HG-[A-F0-9]{14}$/.test(don) ? checkoutOrder(account, don) : null;
+      const order = typeof don === "string" && /^HG-[A-F0-9]{14}$/.test(don) ? await checkoutOrder(account, don) : null;
       if (!order) notFound();
       checkout = { order };
     } else {
-      const addresses = listCheckoutAddresses(account);
+      const addresses = await listCheckoutAddresses(account);
       checkout = { pricing: checkoutPricing, estimate: deliveryEstimate(new Date()), addresses,
-        fallbackAddress: addresses.length ? null : checkoutAddress(account), vouchers: checkoutVouchers };
+        fallbackAddress: addresses.length ? null : await checkoutAddress(account), vouchers: checkoutVouchers };
     }
   }
   const storefront = screen === "shopping" || screen === "san-pham";
   return <Shop screen={screen} slug={slug} account={account} products={products}
-    cart={account ? listCart(account) : []}
-    checkout={checkout} orders={orders} accountAddresses={screen === "tai-khoan" && account ? listCheckoutAddresses(account) : undefined}
-    soldBySlug={storefront ? listSoldQuantities() : undefined}
-    ratings={storefront ? listProductRatings() : undefined}
-    reviews={screen === "san-pham" ? listProductReviews(slug) : undefined} />;
+    cart={account ? await listCart(account) : []}
+    checkout={checkout} orders={orders} accountAddresses={screen === "tai-khoan" && account ? await listCheckoutAddresses(account) : undefined}
+    soldBySlug={storefront ? await listSoldQuantities() : undefined}
+    ratings={storefront ? await listProductRatings() : undefined}
+    reviews={screen === "san-pham" ? await listProductReviews(slug) : undefined} />;
 }

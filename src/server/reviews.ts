@@ -7,8 +7,8 @@ const reviewedProducts = `
   FROM order_items i JOIN variants v ON v.id = i.variant_id
 `;
 
-export function listProductRatings(): Record<string, ProductRating> {
-  const rows = db.prepare(`
+export async function listProductRatings(): Promise<Record<string, ProductRating>> {
+  const rows = await db.prepare(`
     SELECT p.slug, AVG(r.rating) AS average, COUNT(*) AS count
     FROM order_reviews r JOIN (${reviewedProducts}) p ON p.code = r.code
     GROUP BY p.slug
@@ -26,9 +26,9 @@ function maskName(name: string) {
   return letters[0] + "***" + (letters.length > 1 ? letters.at(-1) : "");
 }
 
-export function listProductReviews(slug: string | undefined, limit = 10): ProductReview[] {
+export async function listProductReviews(slug: string | undefined, limit = 10): Promise<ProductReview[]> {
   if (!slug) return [];
-  return db.prepare(`
+  const rows = await db.prepare(`
     SELECT o.name, r.rating, r.comment, GROUP_CONCAT(i.variant_name, ', ') AS variants
     FROM order_reviews r
     JOIN orders o ON o.code = r.code
@@ -38,7 +38,8 @@ export function listProductReviews(slug: string | undefined, limit = 10): Produc
     GROUP BY r.code
     ORDER BY o.created_at DESC
     LIMIT ?
-  `).all(slug, limit).map((row) => ({
+  `).all(slug, limit);
+  return rows.map((row) => ({
     reviewer: maskName(String(row.name)),
     rating: Number(row.rating),
     comment: String(row.comment),

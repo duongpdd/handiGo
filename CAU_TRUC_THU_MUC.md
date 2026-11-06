@@ -124,7 +124,7 @@ WEB/
 
 - [catalog.json](data/catalog.json) chứa dữ liệu khởi tạo. Với cơ sở dữ liệu đã chạy, cập nhật giá, trạng thái bán và tồn kho qua quản trị. Khi bổ sung ảnh, đặt tệp trong `public/images/products/<slug>/` rồi thêm đường dẫn vào `images` của sản phẩm trong danh mục. Khi khởi tạo, máy chủ bổ sung đường dẫn ảnh mới vào bản ghi đã lưu.
 - [checkout-addresses.json](public/checkout-addresses.json) chứa danh mục hành chính dùng để hiển thị và kiểm tra địa chỉ. Các ảnh trong `public/images/` được phục vụ theo đường dẫn bắt đầu bằng `/images/`.
-- SQLite mặc định lưu tại `.runtime/handigo.sqlite`. Các bảng chính gồm `products`, `variants`, `users`, `sessions`, `checkout_addresses`, `cart_items`, `orders`, `order_items` và `order_reviews`. Giỏ hàng lưu trên máy chủ theo tài khoản; giỏ cũ trong `localStorage` được gộp vào tài khoản một lần khi đăng nhập. Trình duyệt chỉ còn lưu lời nhắn đang nhập bằng `localStorage`.
+- SQLite mặc định lưu tại `.runtime/handigo.sqlite`; khi có `TURSO_DATABASE_URL` (bắt buộc trên Vercel), dữ liệu lưu trên Turso. Các bảng chính gồm `products`, `variants`, `users`, `sessions`, `checkout_addresses`, `cart_items`, `orders`, `order_items` và `order_reviews`. Giỏ hàng lưu trên máy chủ theo tài khoản; giỏ cũ trong `localStorage` được gộp vào tài khoản một lần khi đăng nhập. Trình duyệt chỉ còn lưu lời nhắn đang nhập bằng `localStorage`.
 - [.env.example](.env.example) là mẫu cho `.env.local`, gồm đường dẫn cơ sở dữ liệu, tài khoản quản trị khởi tạo, và cấu hình cước. `.env.local`, `.runtime/`, `.next/` và `node_modules/` nằm ngoài phần mã nguồn chia sẻ qua Git.
 - [package.json](package.json) khai báo `dev`, `check`, `build` và `start`. Xem hướng dẫn chạy và thiết lập quản trị trong [README](README.md).
 

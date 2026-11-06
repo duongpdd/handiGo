@@ -1,12 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { SQLOutputValue } from "node:sqlite";
 import type { Account, Order, OrderStatus } from "@/lib/shop";
 import { transitions } from "@/lib/shop";
 import { checkoutTotals, type CheckoutAddress } from "@/lib/checkout";
 import { checkoutShippingFee } from "@/lib/checkout-shipping";
 import { fail, field } from "./auth";
 import { checkoutPricing, getCheckoutVoucher, normalizeVoucher } from "./checkout";
-import { db, transaction } from "./db";
+import { db, transaction, type Row } from "./db";
 
 const lookupPhone = (value: unknown) => {
   const phone = field(value, "Số điện thoại", 9, 20).replace(/[ .-]/g, "").replace(/^\+84/, "0");
@@ -14,11 +13,11 @@ const lookupPhone = (value: unknown) => {
   return phone;
 };
 
-function readOrder(row: Record<string, SQLOutputValue>): Order {
-  const items = db.prepare(`
+async function readOrder(row: Row): Promise<Order> {
+  const items = await db.prepare(`
     SELECT variant_id AS variantId, product_name AS productName, variant_name AS variantName,
            unit_price AS unitPrice, quantity FROM order_items WHERE code = ? ORDER BY rowid
-  `).all(String(row.code)).map((item) => ({ ...item })) as Order["items"];
+  `).all(String(row.code)) as unknown as Order["items"];
   return {
     code: String(row.code), name: String(row.name), phone: String(row.phone),
     address: String(row.address), note: String(row.note), subtotal: Number(row.subtotal),
@@ -28,19 +27,19 @@ function readOrder(row: Record<string, SQLOutputValue>): Order {
   };
 }
 
-export function listOrders(account: Account, includeAll = false) {
-  const rows = includeAll && account.role === "admin"
+export async function listOrders(account: Account, includeAll = false) {
+  const rows = await (includeAll && account.role === "admin"
     ? db.prepare("SELECT * FROM orders ORDER BY created_at DESC").all()
     : db.prepare(`
       SELECT o.*, r.rating, r.comment FROM orders o
       LEFT JOIN order_reviews r ON r.code = o.code
       WHERE o.user_id = ? ORDER BY o.created_at DESC
-    `).all(account.id);
-  return rows.map(readOrder);
+    `).all(account.id));
+  return Promise.all(rows.map(readOrder));
 }
 
-export function listSoldQuantities(): Record<string, number> {
-  const rows = db.prepare(`
+export async function listSoldQuantities(): Promise<Record<string, number>> {
+  const rows = await db.prepare(`
     SELECT v.product_slug AS slug, SUM(i.quantity) AS sold
     FROM orders o
     JOIN order_items i ON i.code = o.code
@@ -51,26 +50,26 @@ export function listSoldQuantities(): Record<string, number> {
   return Object.fromEntries(rows.map(({ slug, sold }) => [String(slug), Number(sold)]));
 }
 
-export function lookupOrder(body: Record<string, unknown>) {
+export async function lookupOrder(body: Record<string, unknown>) {
   const code = field(body.code, "Mã đơn", 17, 17).toUpperCase();
-  const row = db.prepare("SELECT * FROM orders WHERE code = ? AND phone = ?").get(code, lookupPhone(body.phone));
+  const row = await db.prepare("SELECT * FROM orders WHERE code = ? AND phone = ?").get(code, lookupPhone(body.phone));
   if (!row) fail("Không tìm thấy đơn với mã và số điện thoại này.", 404);
-  const { code: orderCode, status, createdAt, total, items } = readOrder(row);
+  const { code: orderCode, status, createdAt, total, items } = await readOrder(row);
   return { code: orderCode, status, createdAt, total, items };
 }
 
-export function checkoutAddress(account: Account): CheckoutAddress | null {
-  const row = db.prepare("SELECT name, phone, address FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1")
+export async function checkoutAddress(account: Account): Promise<CheckoutAddress | null> {
+  const row = await db.prepare("SELECT name, phone, address FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1")
     .get(account.id);
   return row ? { name: String(row.name), phone: String(row.phone), address: String(row.address) } : null;
 }
 
-export function checkoutOrder(account: Account, code: string) {
-  const row = db.prepare("SELECT * FROM orders WHERE user_id = ? AND code = ?").get(account.id, code);
+export async function checkoutOrder(account: Account, code: string) {
+  const row = await db.prepare("SELECT * FROM orders WHERE user_id = ? AND code = ?").get(account.id, code);
   return row ? readOrder(row) : null;
 }
 
-export function placeOrder(body: Record<string, unknown>, account: Account | null) {
+export async function placeOrder(body: Record<string, unknown>, account: Account | null) {
   const name = field(body.name, "Họ tên", 2, 80);
   const phone = lookupPhone(body.phone);
   const address = field(body.address, "Địa chỉ nhận hàng", 8, 250);
@@ -92,8 +91,8 @@ export function placeOrder(body: Record<string, unknown>, account: Account | nul
   const signature = [account?.id, name, phone, address, note, lines, ...(voucher ? [voucher] : []),
     ...(shippingVoucher ? [{ shippingVoucher }] : [])];
   const hash = createHash("sha256").update(JSON.stringify(signature)).digest("hex");
-  return transaction(() => {
-    const previous = db.prepare("SELECT * FROM orders WHERE request_id = ?").get(requestId);
+  return transaction(async () => {
+    const previous = await db.prepare("SELECT * FROM orders WHERE request_id = ?").get(requestId);
     if (previous) {
       if (previous.request_hash !== hash) fail("Yêu cầu này đã dùng cho đơn khác.", 409);
       return readOrder(previous);
@@ -103,94 +102,95 @@ export function placeOrder(body: Record<string, unknown>, account: Account | nul
       SELECT v.name AS color, v.stock, p.detail, p.price FROM variants v
       JOIN products p ON p.slug = v.product_slug WHERE v.id = ? AND p.active = 1
     `);
-    const items = lines.map(([variantId, quantity]) => {
-      const row = select.get(variantId);
+    const items = [];
+    for (const [variantId, quantity] of lines) {
+      const row = await select.get(variantId);
       if (!row) fail("Có sản phẩm đã ngừng bán. Vui lòng kiểm tra giỏ.", 409);
       const { sku, name: productName } = JSON.parse(String(row.detail)) as { sku: string; name: string };
       if (Number(row.stock) < quantity) fail(productName + " không đủ hàng cho màu đã chọn.", 409);
-      return { variantId, quantity, sku, productName, color: String(row.color), unitPrice: Number(row.price) };
-    });
+      items.push({ variantId, quantity, sku, productName, color: String(row.color), unitPrice: Number(row.price) });
+    }
     const selected = voucher ? getCheckoutVoucher(voucher) : undefined;
     const shipping = checkoutShippingFee(checkoutPricing, address, items.reduce((sum, item) => sum + item.quantity, 0));
     const { subtotal, total, reason } = checkoutTotals(items, shipping, selected);
     if (reason) fail(reason, 409);
     if (body.expectedTotal !== total) fail("Tổng thanh toán đã thay đổi. Tải lại trang để kiểm tra giá và ưu đãi.", 409);
     const code = "HG-" + randomBytes(7).toString("hex").toUpperCase();
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
     `).run(code, requestId, hash, account?.id ?? null, name, phone, address, note, subtotal,
       shipping, total, new Date().toISOString());
     const add = db.prepare("INSERT INTO order_items VALUES (?, ?, ?, ?, ?, ?)");
     const reserve = db.prepare("UPDATE variants SET stock = stock - ? WHERE id = ?");
     for (const item of items) {
-      add.run(code, item.variantId, item.productName, item.color, item.unitPrice, item.quantity);
-      reserve.run(item.quantity, item.variantId);
+      await add.run(code, item.variantId, item.productName, item.color, item.unitPrice, item.quantity);
+      await reserve.run(item.quantity, item.variantId);
     }
     if (account) {
       // Bỏ phần đã đặt khỏi giỏ của tài khoản. Xóa dòng trước, rồi mới trừ số lượng còn dư.
       const drop = db.prepare("DELETE FROM cart_items WHERE user_id = ? AND variant_id = ? AND quantity <= ?");
       const take = db.prepare("UPDATE cart_items SET quantity = quantity - ? WHERE user_id = ? AND variant_id = ? AND quantity > ?");
       for (const item of items) {
-        drop.run(account.id, item.variantId, item.quantity);
-        take.run(item.quantity, account.id, item.variantId, item.quantity);
+        await drop.run(account.id, item.variantId, item.quantity);
+        await take.run(item.quantity, account.id, item.variantId, item.quantity);
       }
     }
-    return readOrder(db.prepare("SELECT * FROM orders WHERE code = ?").get(code)!);
+    return readOrder((await db.prepare("SELECT * FROM orders WHERE code = ?").get(code))!);
   });
 }
 
-export function changeOrderStatus(body: Record<string, unknown>, customer?: Account) {
+export async function changeOrderStatus(body: Record<string, unknown>, customer?: Account) {
   const code = field(body.code, "Mã đơn", 17, 17);
   const status = customer ? "cancelled" : field(body.status, "Trạng thái", 1, 20) as OrderStatus;
-  return transaction(() => {
-    const row = customer
+  return transaction(async () => {
+    const row = await (customer
       ? db.prepare("SELECT * FROM orders WHERE code = ? AND user_id = ?").get(code, customer.id)
-      : db.prepare("SELECT * FROM orders WHERE code = ?").get(code);
+      : db.prepare("SELECT * FROM orders WHERE code = ?").get(code));
     if (!row) fail("Không tìm thấy đơn.", 404);
-    const order = readOrder(row);
+    const order = await readOrder(row);
     if (order.status === status) return order;
     if (customer && order.status !== "pending") fail("Chỉ có thể hủy đơn đang chờ xác nhận.", 409);
     if (!transitions[order.status].includes(status)) fail("Không thể chuyển đơn sang trạng thái này.", 409);
-    db.prepare("UPDATE orders SET status = ? WHERE code = ?").run(status, code);
+    await db.prepare("UPDATE orders SET status = ? WHERE code = ?").run(status, code);
     if (status === "cancelled") {
       const restock = db.prepare("UPDATE variants SET stock = stock + ? WHERE id = ?");
-      for (const item of order.items) restock.run(item.quantity, item.variantId);
+      for (const item of order.items) await restock.run(item.quantity, item.variantId);
     }
     return { ...order, status };
   });
 }
 
-export function reviewOrder(body: Record<string, unknown>, account: Account) {
+export async function reviewOrder(body: Record<string, unknown>, account: Account) {
   const code = field(body.code, "Mã đơn", 17, 17);
   const rating = body.rating;
   if (typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 5) {
     fail("Chọn mức đánh giá từ 1 đến 5 sao.");
   }
   const comment = field(body.comment, "Nội dung đánh giá", 0, 500);
-  return transaction(() => {
-    const row = db.prepare("SELECT status FROM orders WHERE code = ? AND user_id = ?").get(code, account.id);
+  return transaction(async () => {
+    const row = await db.prepare("SELECT status FROM orders WHERE code = ? AND user_id = ?").get(code, account.id);
     if (!row) fail("Không tìm thấy đơn.", 404);
     if (row.status !== "delivered") fail("Chỉ có thể đánh giá đơn đã giao.", 409);
-    db.prepare("INSERT OR IGNORE INTO order_reviews VALUES (?, ?, ?)").run(code, rating, comment);
-    const saved = db.prepare("SELECT rating, comment FROM order_reviews WHERE code = ?").get(code)!;
+    await db.prepare("INSERT OR IGNORE INTO order_reviews VALUES (?, ?, ?)").run(code, rating, comment);
+    const saved = (await db.prepare("SELECT rating, comment FROM order_reviews WHERE code = ?").get(code))!;
     return { rating: Number(saved.rating), comment: String(saved.comment) };
   });
 }
 
-export function updateProduct(body: Record<string, unknown>) {
+export async function updateProduct(body: Record<string, unknown>) {
   const slug = field(body.slug, "Mã sản phẩm", 1, 80);
   const price = Number(body.price);
   if (!Number.isSafeInteger(price) || price < 1 || price > 100_000_000) fail("Giá không hợp lệ.");
   if (typeof body.active !== "boolean" || !Array.isArray(body.variants)) fail("Dữ liệu sản phẩm không hợp lệ.");
   const variants = body.variants;
-  transaction(() => {
-    const product = db.prepare("SELECT detail, price, active FROM products WHERE slug = ?").get(slug);
+  await transaction(async () => {
+    const product = await db.prepare("SELECT detail, price, active FROM products WHERE slug = ?").get(slug);
     if (!product) fail("Không tìm thấy sản phẩm.", 404);
     if (product.price !== body.previousPrice || Boolean(product.active) !== body.previousActive) {
       fail("Sản phẩm đã được cập nhật. Tải lại trang trước khi lưu.", 409);
     }
     const { images } = JSON.parse(String(product.detail)) as { images: string[] };
-    const rows = db.prepare("SELECT id, stock, image FROM variants WHERE product_slug = ?").all(slug);
+    const rows = await db.prepare("SELECT id, stock, image FROM variants WHERE product_slug = ?").all(slug);
     if (variants.length !== rows.length || new Set(variants.map((variant) => variant?.id)).size !== rows.length) {
       fail("Danh sách màu không hợp lệ.");
     }
@@ -208,8 +208,8 @@ export function updateProduct(body: Record<string, unknown>) {
       if (imageChanged && current.image !== variant.previousImage) {
         fail("Ảnh màu đã thay đổi. Tải lại trang trước khi lưu.", 409);
       }
-      update.run(stockChanged ? variant.stock : current.stock, imageChanged ? variant.image : current.image, variant.id);
+      await update.run(stockChanged ? variant.stock : current.stock, imageChanged ? variant.image : current.image, variant.id);
     }
-    db.prepare("UPDATE products SET price = ?, active = ? WHERE slug = ?").run(price, Number(body.active), slug);
+    await db.prepare("UPDATE products SET price = ?, active = ? WHERE slug = ?").run(price, Number(body.active), slug);
   });
 }

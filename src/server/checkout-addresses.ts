@@ -6,21 +6,22 @@ import { db, transaction } from "./db";
 
 const places: Record<string, string[]> = data.current;
 
-export function listCheckoutAddresses(account: Account): AddressBookEntry[] {
-  return db.prepare(`
+export async function listCheckoutAddresses(account: Account): Promise<AddressBookEntry[]> {
+  const rows = await db.prepare(`
     SELECT id, label, name, phone, province, ward, street, is_default AS isDefault
     FROM checkout_addresses WHERE user_id = ? ORDER BY is_default DESC, rowid DESC
-  `).all(account.id).map((row) => ({
+  `).all(account.id);
+  return rows.map((row) => ({
     ...row, isDefault: !!row.isDefault, address: [row.street, row.ward, row.province].join(", "),
   })) as AddressBookEntry[];
 }
 
-export function updateCheckoutAddresses(account: Account, body: Record<string, unknown>) {
+export async function updateCheckoutAddresses(account: Account, body: Record<string, unknown>) {
   const id = field(body.id, "Mã địa chỉ", 36, 36);
   if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id)) fail("Mã địa chỉ không hợp lệ.");
 
-  return transaction(() => {
-    const existing = db.prepare("SELECT user_id FROM checkout_addresses WHERE id = ?").get(id);
+  return transaction(async () => {
+    const existing = await db.prepare("SELECT user_id FROM checkout_addresses WHERE id = ?").get(id);
     if (existing && existing.user_id !== account.id) fail("Không tìm thấy địa chỉ.", 404);
     if (body.operation === "save") {
       const label = body.label;
@@ -33,7 +34,7 @@ export function updateCheckoutAddresses(account: Account, body: Record<string, u
       if (!Object.hasOwn(places, province) || !places[province].includes(ward)) fail("Phường, xã hoặc đặc khu không thuộc tỉnh/thành đã chọn.");
       const street = field(body.street, "Địa chỉ cụ thể", 3, 180);
       if ([street, ward, province].join(", ").length > 250) fail("Địa chỉ đầy đủ chỉ được dài tối đa 250 ký tự.");
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO checkout_addresses (id, user_id, label, name, phone, province, ward, street, is_default)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
         ON CONFLICT(id) DO UPDATE SET label = excluded.label, name = excluded.name, phone = excluded.phone,
@@ -44,10 +45,10 @@ export function updateCheckoutAddresses(account: Account, body: Record<string, u
       fail("Không tìm thấy địa chỉ.", 404);
     }
 
-    const hasDefault = db.prepare("SELECT 1 FROM checkout_addresses WHERE user_id = ? AND is_default = 1").get(account.id);
+    const hasDefault = await db.prepare("SELECT 1 FROM checkout_addresses WHERE user_id = ? AND is_default = 1").get(account.id);
     if (!hasDefault || body.operation === "default" || body.makeDefault === true) {
-      db.prepare("UPDATE checkout_addresses SET is_default = 0 WHERE user_id = ? AND is_default = 1").run(account.id);
-      db.prepare("UPDATE checkout_addresses SET is_default = 1 WHERE id = ? AND user_id = ?").run(id, account.id);
+      await db.prepare("UPDATE checkout_addresses SET is_default = 0 WHERE user_id = ? AND is_default = 1").run(account.id);
+      await db.prepare("UPDATE checkout_addresses SET is_default = 1 WHERE id = ? AND user_id = ?").run(id, account.id);
     }
     return listCheckoutAddresses(account);
   });

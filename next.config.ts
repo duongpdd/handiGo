@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
-  serverExternalPackages: [],
+  serverExternalPackages: ["@libsql/client", "libsql"],
   poweredByHeader: false,
   devIndicators: false,
 };

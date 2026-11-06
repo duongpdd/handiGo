@@ -40,3 +40,7 @@ Checkout ước tính cước theo tuyến và nấc 500 g của [Vietnam Post](
 
 Chạy `npm run check` để kiểm tra TypeScript. Dùng `npm run build` rồi `npm start` để chạy bản build. Giữ thư mục dữ liệu SQLite trên ổ lưu trữ bền vững khi triển khai trên một máy chủ Node.
 
+## Triển khai trên Vercel
+
+Vercel không giữ file trên máy chủ, nên bản triển khai cần cơ sở dữ liệu [Turso](https://turso.tech). Tạo database ở vùng `aws-us-east-1` (gần vùng `iad1` mà app đang chạy), rồi thêm `TURSO_DATABASE_URL` và `TURSO_AUTH_TOKEN` vào Environment Variables của dự án trên Vercel và deploy lại. Bảng và dữ liệu sản phẩm tự khởi tạo ở lần chạy đầu. Khi thiếu hai biến này, trang vẫn xem được nhưng đăng ký và đăng nhập sẽ báo lỗi.
+
