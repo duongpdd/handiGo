@@ -89,7 +89,7 @@ function Footer() {
       <h2>Liên hệ</h2>
       <a className="footer-contact" href="tel:0862011397"><Icon name="phone" size={17} />0862 011 397</a>
       <a className="footer-contact" href="mailto:handigo.shop@gmail.com"><Icon name="mail" size={17} />handigo.shop@gmail.com</a>
-      <a className="footer-social" href="https://www.facebook.com/profile.php?id=61595162400373" target="_blank" rel="noreferrer" aria-label="Facebook HandiGo"><Icon name="facebook" size={19} /></a>
+      <a className="footer-contact" href="https://www.facebook.com/profile.php?id=61595162400373" target="_blank" rel="noreferrer" aria-label="Facebook HandiGo"><Icon name="facebook" size={17} />HandiGo</a>
     </div>
   </div><div className="wrap footer-bottom">© HandiGo</div></footer>;
 }
